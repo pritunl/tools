@@ -14,6 +14,32 @@ const (
 	ErrorLevel = "error"
 )
 
+var (
+	timeFormat  = "[2006-01-02 15:04:05]"
+	levelFormat = "[%s]"
+	showIcons   = true
+)
+
+type LoggerOption func()
+
+func SetTimeFormat(format string) LoggerOption {
+	return func() {
+		timeFormat = format
+	}
+}
+
+func SetLevelFormat(format string) LoggerOption {
+	return func() {
+		levelFormat = format
+	}
+}
+
+func SetIcons(show bool) LoggerOption {
+	return func() {
+		showIcons = show
+	}
+}
+
 type Fields map[string]interface{}
 
 type Entry struct {
@@ -47,11 +73,20 @@ func (e *Entry) log(level string, args ...interface{}) {
 }
 
 func (e *Entry) output() {
-	msg := fmt.Sprintf("%s%s ▶ %s",
-		e.Time.Format("[2006-01-02 15:04:05]"),
-		fmt.Sprintf("[%s]", strings.ToUpper(e.Level)),
-		e.Message,
-	)
+	var msg string
+	if timeFormat != "" {
+		msg += e.Time.Format(timeFormat)
+	}
+	if levelFormat != "" {
+		msg += fmt.Sprintf(levelFormat, strings.ToUpper(e.Level))
+	}
+	if msg != "" {
+		msg += " "
+	}
+	if showIcons {
+		msg += "▶ "
+	}
+	msg += e.Message
 
 	keys := []string{}
 
@@ -68,8 +103,13 @@ func (e *Entry) output() {
 	sort.Strings(keys)
 
 	for _, key := range keys {
-		msg += fmt.Sprintf(" ◆ %s=%v", key,
-			fmt.Sprintf("%#v", e.Data[key]))
+		if showIcons {
+			msg += fmt.Sprintf(" ◆ %s=%v", key,
+				fmt.Sprintf("%#v", e.Data[key]))
+		} else {
+			msg += fmt.Sprintf(" %s=%v", key,
+				fmt.Sprintf("%#v", e.Data[key]))
+		}
 	}
 
 	if errStr != "" {
@@ -107,4 +147,10 @@ func Warn(args ...interface{}) {
 func Error(args ...interface{}) {
 	entry := &Entry{}
 	entry.Error(args...)
+}
+
+func Init(opts ...LoggerOption) {
+	for _, opt := range opts {
+		opt()
+	}
 }
