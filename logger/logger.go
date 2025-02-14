@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -18,6 +19,11 @@ var (
 	timeFormat  = "[2006-01-02 15:04:05]"
 	levelFormat = "[%s]"
 	showIcons   = true
+	limits      = map[string]time.Time{}
+	limitsLock  = sync.Mutex{}
+	limitsClean = time.Now()
+
+	MaxLimit = 1 * time.Hour
 )
 
 type LoggerOption func()
@@ -43,6 +49,7 @@ func SetIcons(show bool) LoggerOption {
 type Fields map[string]interface{}
 
 type Entry struct {
+	limit   time.Duration
 	Level   string
 	Message string
 	Time    time.Time
@@ -65,7 +72,35 @@ func (e *Entry) Error(args ...interface{}) {
 	e.log(ErrorLevel, args...)
 }
 
+func (e *Entry) Limit(dur time.Duration) *Entry {
+	e.limit = dur
+	return e
+}
+
 func (e *Entry) log(level string, args ...interface{}) {
+	if e.limit != 0 {
+		token := ""
+		if len(args) > 0 {
+			if str, ok := args[0].(string); ok {
+				token = str
+			}
+		}
+
+		limitsLock.Lock()
+		timestamp := limits[token]
+		if time.Since(timestamp) < e.limit {
+			limitsLock.Unlock()
+			return
+		}
+
+		limits[token] = time.Now()
+		limitsLock.Unlock()
+	}
+
+	if time.Since(limitsClean) > MaxLimit {
+		cleanLimits()
+	}
+
 	e.Level = level
 	e.Message = fmt.Sprint(args...)
 	e.Time = time.Now()
@@ -152,5 +187,19 @@ func Error(args ...interface{}) {
 func Init(opts ...LoggerOption) {
 	for _, opt := range opts {
 		opt()
+	}
+}
+
+func cleanLimits() {
+	limitsLock.Lock()
+	defer limitsLock.Unlock()
+
+	now := time.Now()
+	limitsClean = now
+
+	for token, timestamp := range limits {
+		if now.Sub(timestamp) > MaxLimit {
+			delete(limits, token)
+		}
 	}
 }
