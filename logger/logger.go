@@ -1,205 +1,184 @@
 package logger
 
 import (
-	"fmt"
-	"sort"
-	"strings"
 	"sync"
 	"time"
 )
 
-const (
-	DebugLevel = "debug"
-	InfoLevel  = "info"
-	WarnLevel  = "warn"
-	ErrorLevel = "error"
-)
-
 var (
-	timeFormat  = "[2006-01-02 15:04:05]"
-	levelFormat = "[%s]"
-	showIcons   = true
-	limits      = map[string]time.Time{}
-	limitsLock  = sync.Mutex{}
-	limitsClean = time.Now()
-
-	MaxLimit = 1 * time.Hour
+	global *Logger
 )
 
-type LoggerOption func()
+type LoggerOption func(*Logger)
 
-func SetTimeFormat(format string) LoggerOption {
-	return func() {
-		timeFormat = format
-	}
+type Logger struct {
+	showIcons    bool
+	maxLimit     time.Duration
+	limits       map[string]time.Time
+	limitsLock   sync.Mutex
+	limitsClean  time.Time
+	handlersLock sync.Mutex
+	handlers     []func(*Record)
 }
 
-func SetLevelFormat(format string) LoggerOption {
-	return func() {
-		levelFormat = format
+func (l *Logger) Panic(args ...interface{}) {
+	entry := &Entry{
+		logger: l,
 	}
+	entry.Panic(args...)
 }
 
-func SetIcons(show bool) LoggerOption {
-	return func() {
-		showIcons = show
+func (l *Logger) Crit(args ...interface{}) {
+	entry := &Entry{
+		logger: l,
 	}
+	entry.Crit(args...)
 }
 
-type Fields map[string]interface{}
-
-type Entry struct {
-	limit   time.Duration
-	Level   string
-	Message string
-	Time    time.Time
-	Data    Fields
+func (l *Logger) Error(args ...interface{}) {
+	entry := &Entry{
+		logger: l,
+	}
+	entry.Error(args...)
 }
 
-func (e *Entry) Debug(args ...interface{}) {
-	e.log(DebugLevel, args...)
-}
-
-func (e *Entry) Info(args ...interface{}) {
-	e.log(InfoLevel, args...)
-}
-
-func (e *Entry) Warn(args ...interface{}) {
-	e.log(WarnLevel, args...)
-}
-
-func (e *Entry) Error(args ...interface{}) {
-	e.log(ErrorLevel, args...)
-}
-
-func (e *Entry) Limit(dur time.Duration) *Entry {
-	e.limit = dur
-	return e
-}
-
-func (e *Entry) log(level string, args ...interface{}) {
-	if e.limit != 0 {
-		token := ""
-		if len(args) > 0 {
-			if str, ok := args[0].(string); ok {
-				token = str
-			}
-		}
-
-		limitsLock.Lock()
-		timestamp := limits[token]
-		if time.Since(timestamp) < e.limit {
-			limitsLock.Unlock()
-			return
-		}
-
-		limits[token] = time.Now()
-		limitsLock.Unlock()
+func (l *Logger) Warn(args ...interface{}) {
+	entry := &Entry{
+		logger: l,
 	}
-
-	if time.Since(limitsClean) > MaxLimit {
-		cleanLimits()
-	}
-
-	e.Level = level
-	e.Message = fmt.Sprint(args...)
-	e.Time = time.Now()
-	e.output()
-}
-
-func (e *Entry) output() {
-	var msg string
-	if timeFormat != "" {
-		msg += e.Time.Format(timeFormat)
-	}
-	if levelFormat != "" {
-		msg += fmt.Sprintf(levelFormat, strings.ToUpper(e.Level))
-	}
-	if msg != "" {
-		msg += " "
-	}
-	if showIcons {
-		msg += "▶ "
-	}
-	msg += e.Message
-
-	keys := []string{}
-
-	var errStr string
-	for key, val := range e.Data {
-		if key == "error" {
-			errStr = fmt.Sprintf("%s", val)
-			continue
-		}
-
-		keys = append(keys, key)
-	}
-
-	sort.Strings(keys)
-
-	for _, key := range keys {
-		if showIcons {
-			msg += fmt.Sprintf(" ◆ %s=%v", key,
-				fmt.Sprintf("%#v", e.Data[key]))
-		} else {
-			msg += fmt.Sprintf(" %s=%v", key,
-				fmt.Sprintf("%#v", e.Data[key]))
-		}
-	}
-
-	if errStr != "" {
-		msg += "\n" + errStr
-	}
-
-	if string(msg[len(msg)-1]) != "\n" {
-		msg += "\n"
-	}
-
-	fmt.Print(msg)
-}
-
-func WithFields(fields Fields) *Entry {
-	return &Entry{
-		Data: fields,
-	}
-}
-
-func Debug(args ...interface{}) {
-	entry := &Entry{}
-	entry.Debug(args...)
-}
-
-func Info(args ...interface{}) {
-	entry := &Entry{}
-	entry.Info(args...)
-}
-
-func Warn(args ...interface{}) {
-	entry := &Entry{}
 	entry.Warn(args...)
 }
 
-func Error(args ...interface{}) {
-	entry := &Entry{}
-	entry.Error(args...)
+func (l *Logger) Info(args ...interface{}) {
+	entry := &Entry{
+		logger: l,
+	}
+	entry.Info(args...)
+}
+
+func (l *Logger) Debug(args ...interface{}) {
+	entry := &Entry{
+		logger: l,
+	}
+	entry.Debug(args...)
+}
+
+func (l *Logger) Trace(args ...interface{}) {
+	entry := &Entry{
+		logger: l,
+	}
+	entry.Trace(args...)
+}
+
+func (l *Logger) WithFields(fields Fields) *Entry {
+	return &Entry{
+		logger: l,
+		data:   fields,
+	}
+}
+
+func (l *Logger) AddHandler(hand func(*Record)) {
+	l.handlersLock.Lock()
+	defer l.handlersLock.Unlock()
+	l.handlers = append(l.handlers, hand)
+}
+
+func (l *Logger) cleanLimits() {
+	l.limitsLock.Lock()
+	defer l.limitsLock.Unlock()
+
+	now := time.Now()
+	l.limitsClean = now
+
+	for token, timestamp := range l.limits {
+		if now.Sub(timestamp) > l.maxLimit {
+			delete(l.limits, token)
+		}
+	}
 }
 
 func Init(opts ...LoggerOption) {
 	for _, opt := range opts {
-		opt()
+		opt(global)
 	}
 }
 
-func cleanLimits() {
-	limitsLock.Lock()
-	defer limitsLock.Unlock()
-
-	now := time.Now()
-	limitsClean = now
-
-	for token, timestamp := range limits {
-		if now.Sub(timestamp) > MaxLimit {
-			delete(limits, token)
-		}
+func New(opts ...LoggerOption) *Logger {
+	logr := &Logger{
+		showIcons:    true,
+		maxLimit:     1 * time.Hour,
+		limits:       map[string]time.Time{},
+		limitsLock:   sync.Mutex{},
+		limitsClean:  time.Now(),
+		handlersLock: sync.Mutex{},
+		handlers:     []func(*Record){},
 	}
+
+	for _, opt := range opts {
+		opt(logr)
+	}
+
+	return logr
+}
+
+func Panic(args ...interface{}) {
+	global.Panic(args)
+}
+
+func Crit(args ...interface{}) {
+	global.Crit(args)
+}
+
+func Error(args ...interface{}) {
+	global.Error(args)
+}
+
+func Warn(args ...interface{}) {
+	global.Warn(args)
+}
+
+func Info(args ...interface{}) {
+	global.Info(args)
+}
+
+func Debug(args ...interface{}) {
+	global.Debug(args)
+}
+
+func Trace(args ...interface{}) {
+	global.Trace(args)
+}
+
+func WithFields(fields Fields) *Entry {
+	return global.WithFields(fields)
+}
+
+func AddHandler(hand func(*Record)) {
+	global.AddHandler(hand)
+}
+
+func SetMaxLimit(dur time.Duration) LoggerOption {
+	return func(l *Logger) {
+		l.maxLimit = dur
+	}
+}
+
+func SetIcons(show bool) LoggerOption {
+	return func(l *Logger) {
+		l.showIcons = show
+	}
+}
+
+func init() {
+	logr := &Logger{
+		showIcons:    true,
+		maxLimit:     1 * time.Hour,
+		limits:       map[string]time.Time{},
+		limitsLock:   sync.Mutex{},
+		limitsClean:  time.Now(),
+		handlersLock: sync.Mutex{},
+		handlers:     []func(*Record){},
+	}
+
+	global = logr
 }
