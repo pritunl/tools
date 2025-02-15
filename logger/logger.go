@@ -9,10 +9,15 @@ var (
 	global *Logger
 )
 
+const (
+	defaultTimeFormat = "[2006-01-02 15:04:05]"
+)
+
 type LoggerOption func(*Logger)
 
 type Logger struct {
 	showIcons    bool
+	timeFormat   string
 	maxLimit     time.Duration
 	limits       map[string]time.Time
 	limitsLock   sync.Mutex
@@ -106,6 +111,7 @@ func Init(opts ...LoggerOption) {
 func New(opts ...LoggerOption) *Logger {
 	logr := &Logger{
 		showIcons:    true,
+		timeFormat:   defaultTimeFormat,
 		maxLimit:     1 * time.Hour,
 		limits:       map[string]time.Time{},
 		limitsLock:   sync.Mutex{},
@@ -157,6 +163,12 @@ func AddHandler(hand func(*Record)) {
 	global.AddHandler(hand)
 }
 
+func SetTimeFormat(format string) LoggerOption {
+	return func(l *Logger) {
+		l.timeFormat = format
+	}
+}
+
 func SetMaxLimit(dur time.Duration) LoggerOption {
 	return func(l *Logger) {
 		l.maxLimit = dur
@@ -172,6 +184,7 @@ func SetIcons(show bool) LoggerOption {
 func init() {
 	logr := &Logger{
 		showIcons:    true,
+		timeFormat:   defaultTimeFormat,
 		maxLimit:     1 * time.Hour,
 		limits:       map[string]time.Time{},
 		limitsLock:   sync.Mutex{},

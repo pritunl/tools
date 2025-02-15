@@ -15,16 +15,12 @@ var (
 	whiteDiamond = colorize.String("◆", colorize.WhiteBold, colorize.None)
 )
 
-const (
-	timeFormat = "[2006-01-02 15:04:05]"
-)
-
 type Record struct {
 	Level          Level
 	Message        string
 	Time           time.Time
 	Data           Fields
-	showIcons      bool
+	logger         *Logger
 	formattedPlain string
 	formattedColor string
 }
@@ -102,10 +98,10 @@ func (r *Record) formatLevelColor() string {
 
 func (r *Record) formatPlain() {
 	var msg string
-	msg += r.Time.Format(timeFormat)
+	msg += r.Time.Format(r.logger.timeFormat)
 	msg += r.formatLevelPlain()
 	msg += " "
-	if r.showIcons {
+	if r.logger.showIcons {
 		msg += "▶ "
 	}
 	msg += r.Message
@@ -134,7 +130,7 @@ func (r *Record) formatPlain() {
 	sort.Strings(keys)
 
 	for _, key := range keys {
-		if r.showIcons {
+		if r.logger.showIcons {
 			msg += fmt.Sprintf(" ◆ %s=%v", key,
 				fmt.Sprintf("%#v", r.Data[key]))
 		} else {
@@ -144,7 +140,7 @@ func (r *Record) formatPlain() {
 	}
 
 	if errDataKey != "" && errDataMsg != "" {
-		if r.showIcons {
+		if r.logger.showIcons {
 			msg += fmt.Sprintf(" ◆ error_key=%v",
 				fmt.Sprintf("%#v", errDataKey))
 			msg += fmt.Sprintf(" ◆ error_msg=%v",
@@ -171,13 +167,13 @@ func (r *Record) formatPlain() {
 func (r *Record) formatColor() {
 	var msg string
 	msg += colorize.String(
-		r.Time.Format(timeFormat),
+		r.Time.Format(r.logger.timeFormat),
 		colorize.Bold,
 		colorize.None,
 	)
 	msg += r.formatLevelColor()
 	msg += " "
-	if r.showIcons {
+	if r.logger.showIcons {
 		msg += blueArrow + " "
 	}
 	msg += r.Message
@@ -206,7 +202,7 @@ func (r *Record) formatColor() {
 	sort.Strings(keys)
 
 	for _, key := range keys {
-		if r.showIcons {
+		if r.logger.showIcons {
 			msg += fmt.Sprintf(
 				" %s %s=%v",
 				whiteDiamond,
@@ -225,7 +221,7 @@ func (r *Record) formatColor() {
 	}
 
 	if errDataKey != "" && errDataMsg != "" {
-		if r.showIcons {
+		if r.logger.showIcons {
 			msg += fmt.Sprintf(
 				" %s %s=%v",
 				whiteDiamond,

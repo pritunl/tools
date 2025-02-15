@@ -76,11 +76,11 @@ func (e *Entry) log(level Level, args ...interface{}) {
 	e.time = time.Now()
 
 	rec := &Record{
-		Level:     e.level,
-		Message:   e.message,
-		Time:      e.time,
-		Data:      e.data,
-		showIcons: e.logger.showIcons,
+		Level:   e.level,
+		Message: e.message,
+		Time:    e.time,
+		Data:    e.data,
+		logger:  e.logger,
 	}
 
 	for _, hand := range e.logger.handlers {

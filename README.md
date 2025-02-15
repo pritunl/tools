@@ -6,14 +6,14 @@ Common libraries used in Pritunl golang codebases
 
 ```go
 func test() (err error) {
-	_, err = os.Open("test.json")
-	if err != nil {
-		err = &errortypes.ReadError{
-			errors.Wrap(err, "tools: Failed to read file"),
-		}
+    _, err = os.Open("test.json")
+    if err != nil {
+        err = &errortypes.ReadError{
+            errors.Wrap(err, "tools: Failed to read file"),
+        }
         return
-	}
-	return
+    }
+    return
 }
 ```
 
@@ -137,6 +137,7 @@ for i := 0; i < 12; i++ {
 }
 
 logr := logger.New(
+    logger.SetTimeFormat("[15:04:05]"),
     logger.SetMaxLimit(2*time.Hour),
     logger.SetIcons(false),
 )
