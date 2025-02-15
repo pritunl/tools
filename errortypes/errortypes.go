@@ -5,63 +5,63 @@ import (
 )
 
 type UnknownError struct {
-	errors.DropboxError
+	errors.StackError
 }
 
 type NotFoundError struct {
-	errors.DropboxError
+	errors.StackError
 }
 
 type ReadError struct {
-	errors.DropboxError
+	errors.StackError
 }
 
 type WriteError struct {
-	errors.DropboxError
+	errors.StackError
 }
 
 type ParseError struct {
-	errors.DropboxError
+	errors.StackError
 }
 
 type AuthenticationError struct {
-	errors.DropboxError
+	errors.StackError
 }
 
 type VerificationError struct {
-	errors.DropboxError
+	errors.StackError
 }
 
 type ApiError struct {
-	errors.DropboxError
+	errors.StackError
 }
 
 type DatabaseError struct {
-	errors.DropboxError
+	errors.StackError
 }
 
 type RequestError struct {
-	errors.DropboxError
+	errors.StackError
 }
 
 type ConnectionError struct {
-	errors.DropboxError
+	errors.StackError
 }
 
 type TimeoutError struct {
-	errors.DropboxError
+	errors.StackError
 }
 
 type ExecError struct {
-	errors.DropboxError
+	errors.StackError
 }
 
 type NetworkError struct {
-	errors.DropboxError
+	errors.StackError
 }
 
 type TypeError struct {
-	errors.DropboxError
+	errors.StackError
 }
 
 type ErrorData struct {
