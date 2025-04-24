@@ -128,31 +128,31 @@ func New(opts ...LoggerOption) *Logger {
 }
 
 func Panic(args ...interface{}) {
-	global.Panic(args)
+	global.Panic(args...)
 }
 
 func Crit(args ...interface{}) {
-	global.Crit(args)
+	global.Crit(args...)
 }
 
 func Error(args ...interface{}) {
-	global.Error(args)
+	global.Error(args...)
 }
 
 func Warn(args ...interface{}) {
-	global.Warn(args)
+	global.Warn(args...)
 }
 
 func Info(args ...interface{}) {
-	global.Info(args)
+	global.Info(args...)
 }
 
 func Debug(args ...interface{}) {
-	global.Debug(args)
+	global.Debug(args...)
 }
 
 func Trace(args ...interface{}) {
-	global.Trace(args)
+	global.Trace(args...)
 }
 
 func WithFields(fields Fields) *Entry {
