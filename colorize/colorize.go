@@ -1,9 +1,25 @@
+// Package colorize provides ANSI escape sequences for coloring terminal
+// output and a helper for wrapping a string in foreground and background
+// color codes.
+//
+// The color constants are untyped string constants and may be passed
+// anywhere a Color is expected:
+//
+//	fmt.Println(colorize.String("error", colorize.RedBold, colorize.None))
 package colorize
 
+// Color is an ANSI escape sequence that sets a terminal text attribute such
+// as a foreground color, background color or bold weight. The empty string
+// (None) applies no attribute.
 type Color string
 
+// ANSI escape sequences for terminal text attributes. Constants without a
+// suffix set the foreground color, the Bold variants set the foreground color
+// with bold weight, and the Bg variants set the background color.
 const (
-	None       = ""
+	// None applies no color or attribute.
+	None = ""
+	// Bold enables bold weight without changing the color.
 	Bold       = "\033[1m"
 	Black      = "\033[0;30m"
 	BlackBold  = "\033[1;30m"
@@ -34,6 +50,9 @@ const (
 	WhiteBg    = "\033[47m"
 )
 
+// String returns input wrapped in the fg and bg escape sequences followed by
+// an ANSI reset so that attributes do not leak into subsequent output. Pass
+// None for fg or bg to leave that attribute unset.
 func String(input string, fg Color, bg Color) (str string) {
 	str = string(fg) + string(bg) + input + "\033[0m"
 	return

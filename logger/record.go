@@ -15,18 +15,39 @@ var (
 	whiteDiamond = colorize.String("◆", colorize.WhiteBold, colorize.None)
 )
 
+// Record is a single emitted log message as delivered to handlers. It
+// carries the level, message, timestamp and structured fields, and can
+// render itself as a plain or ANSI-colored line using the formatting
+// settings of the Logger that produced it. Formatted output is cached after
+// the first call to String or StringColor.
 type Record struct {
-	Level          Level
-	Message        string
-	Time           time.Time
+	// Level is the severity the record was logged at.
+	Level Level
+	// Message is the log message text.
+	Message string
+	// Time is when the record was emitted.
+	Time time.Time
+	// Data holds the structured fields attached with WithFields. It may be
+	// nil.
 	Data           Fields
 	logger         *Logger
 	formattedPlain string
 	formattedColor string
 }
 
+// Fields is the set of structured key/value pairs attached to a log entry.
+//
+// Two keys are handled specially when a Record is formatted. A value under
+// "error" is rendered with %s on its own line after the message rather than
+// as a key=value field, so that multi-line errors with stack traces remain
+// readable. A value under "error_data" of type *errortypes.ErrorData is
+// expanded into the fields "error_key" and "error_msg" and is otherwise
+// omitted. All remaining fields are rendered as key=value pairs sorted by
+// key, with values formatted using %#v.
 type Fields map[string]interface{}
 
+// String returns the record formatted as a single plain-text line
+// terminated by a newline. The result is cached.
 func (r *Record) String() string {
 	if r.formattedPlain == "" {
 		r.formatPlain()
@@ -34,6 +55,8 @@ func (r *Record) String() string {
 	return r.formattedPlain
 }
 
+// StringColor returns the record formatted as a single line with ANSI color
+// escape sequences, terminated by a newline. The result is cached.
 func (r *Record) StringColor() string {
 	if r.formattedColor == "" {
 		r.formatColor()
@@ -41,6 +64,7 @@ func (r *Record) StringColor() string {
 	return r.formattedColor
 }
 
+// formatLevelPlain returns the bracketed level tag for plain output.
 func (r *Record) formatLevelPlain() string {
 	switch r.Level {
 	case PanicLevel:
@@ -62,6 +86,8 @@ func (r *Record) formatLevelPlain() string {
 	return ""
 }
 
+// formatLevelColor returns the bracketed level tag for color output, with a
+// background color chosen by level.
 func (r *Record) formatLevelColor() string {
 	var colorBg colorize.Color
 
@@ -96,6 +122,8 @@ func (r *Record) formatLevelColor() string {
 	return colorize.String(str, colorize.WhiteBold, colorBg)
 }
 
+// formatPlain renders the record without color and stores the result in
+// formattedPlain.
 func (r *Record) formatPlain() {
 	var msg string
 	msg += r.Time.Format(r.logger.timeFormat)
@@ -164,6 +192,8 @@ func (r *Record) formatPlain() {
 	r.formattedPlain = msg
 }
 
+// formatColor renders the record with ANSI colors and stores the result in
+// formattedColor.
 func (r *Record) formatColor() {
 	var msg string
 	msg += colorize.String(
